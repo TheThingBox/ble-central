@@ -1,0 +1,9 @@
+{
+    "ble-central": {
+        "peripheral": "Peripheral",
+        "name": "Name",
+        "characteristics": "Characteristics",
+        "list": "List",
+        "keep-connection": "Keep connection alive"
+    }
+}

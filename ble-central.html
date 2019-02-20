@@ -1,0 +1,221 @@
+<script type="text/x-red" data-template-name="ble-central-advertising">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> <span data-i18n="ble-central.name"></span></label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-ble-peripheral-uuid"><i class="icon-tag"></i> <span data-i18n="ble-central.peripheral"></label>
+        <select id="node-input-ble-peripheral-uuid"></select>
+    </div>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType("ble-central-advertising", {
+        category: "BLE",
+        icon: "bluetooth.png",
+        color: "#f6f6f7",
+        defaults: {
+            "ble-peripheral-uuid": { value: "", required: true },
+            "ble-peripheral-name": { value: "", required: true },
+            "name": { value: "" }
+        },
+        inputs:0,
+        outputs:1,
+        align: "left",
+        paletteLabel: "BLE Advertising",
+        label: function() {
+            return this.name || this["ble-peripheral-name"] || "BLE Advertising";
+        },
+        labelStyle: function() {
+            return (this.name || this["ble-peripheral-name"]) ? "node_label_italic" : "";
+        },
+        oneditprepare: function() {
+            var devicesList = $("#node-input-ble-peripheral-uuid");
+            
+            var refreshDevicesList = () => {
+                $.get("/ble-central/devices", (devices) => {
+                    devicesList.empty();
+
+                    for(var i in devices){
+                        var d = devices[i];
+                        if(d.connectable){
+                            devicesList.append($("<option>").attr("value", d.id).attr("peripheral-name", d.name).attr("selected", (d.id === this["ble-peripheral-uuid"])).text(d.name + " (" + d.id + ")"));
+                        }
+                    }
+                });
+            };
+            refreshDevicesList();
+
+            devicesList.on("change", () => {
+                this["ble-peripheral-name"] = $('#node-input-ble-peripheral-uuid').find(":selected").attr("peripheral-name");
+            });
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="ble-central-connection">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> <span data-i18n="ble-central.name"></span></label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-ble-peripheral-uuid"><i class="icon-tag"></i> <span data-i18n="ble-central.peripheral"></label>
+        <select id="node-input-ble-peripheral-uuid"></select>
+        <a href="#" class="editor-button" id="node-input-refresh" style="margin-left: 5px;">
+            <i class="fa fa-refresh"></i>
+        </a>
+    </div>
+    <div class="form-row">
+        <label id="ble-keep-connection-label" for="node-input-keep-connection"><i class="icon-tag"></i> <span data-i18n="ble-central.keep-connection"></span></label>
+        <input type="checkbox" id="node-input-keep-connection">
+    </div>
+    <div class="form-row">
+        <i class="fa fa-gear"></i> <span data-i18n="ble-central.characteristics"> </span>
+        <a href="#" class="editor-button" id="node-input-list-characteristics" style="margin-left: 5px;">
+            <i class="fa fa-list-ul"></i> <span data-i18n="ble-central.list"></label>
+        </a>
+        <img src="/red/images/spin.svg" id="node-characteristics-loader">
+    </div>
+    <div class="form-row">
+        <ol id="node-input-characteristics-container"></ol>
+    </div>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType("ble-central-connection", {
+        category: "BLE",
+        icon: "bluetooth.png",
+        color: "#f6f6f7",
+        defaults: {
+            "ble-peripheral-uuid": { value: "", required: true },
+            "ble-peripheral-name": { value: "", required: true },
+            "keep-connection": { value: false, required: true},
+            "name": { value: "" }
+        },
+        inputs:1,
+        outputs:1,
+        align: "left",
+        paletteLabel: "BLE Central",
+        label: function() {
+            return this.name || this["ble-peripheral-name"] || "BLE Central";
+        },
+        labelStyle: function() {
+            return (this.name || this["ble-peripheral-name"]) ? "node_label_italic" : "";
+        },
+        oneditprepare: function() {
+            var characteristicsLoader = $("#node-characteristics-loader");
+            var devicesList = $("#node-input-ble-peripheral-uuid");
+            var characteristicsContainer = $("#node-input-characteristics-container");
+            var refreshPeripherals = $("#node-input-refresh");
+            var keepConnectionLabel = $("#ble-keep-connection-label");
+            var keepConnection = $("#node-input-keep-connection");
+
+            characteristicsLoader.hide();
+            keepConnectionLabel.css("width", "auto");
+            keepConnection.css("width", "auto");
+            keepConnection.css("margin-top", "0px");
+            keepConnection.css("margin-left", "10px");
+
+            characteristicsContainer.css("min-height","350px").css("min-width","475px").editableList({
+                addItem: function(container, i, characteristic) {
+                    var row = $("<div/>").appendTo(container);
+                    var row2 = $("<div/>").appendTo(container);
+
+                    var propertyColor = function(prop){
+                        var col = "black";
+                        switch(prop){
+                            case "read":
+                                col = "green";
+                                break;
+                            case "write":
+                                col = "blue";
+                                break;
+                            case "notify":
+                                col = "red";
+                                break;
+                        }
+                        return col;
+                    };
+
+                    $("<span/>", {
+                        "style": "margin-left: 5px;"
+                    }).text(characteristic.name).appendTo(row);
+                    $("<span/>", {
+                        "style": "margin-left: 5px;"
+                    }).text(characteristic.uuid).appendTo(row);
+                    $("<a>", {
+                        "class": "editor-button editor-button-small",
+                        "name": "characteristic-copy-tool",
+                        "id": characteristic.uuid,
+                        "style": "margin-left: 5px;"
+                    }).append($("<i>", {"id": characteristic.uuid, "class": "fa fa-clone"})).appendTo(row).on("click", (e) => {
+                        const el = document.createElement('textarea');
+                        el.value = e.target.id;
+                        document.body.appendChild(el);
+                        el.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(el);
+                    });
+                    $("<span/>", {
+                        "style": "margin-left: 5px;"
+                    }).text(characteristic.type).appendTo(row2);
+
+                    if(characteristic.properties){
+                        for(var i = 0 ;  i < characteristic.properties.length ; i++){
+                            $("<span/>", {
+                                "style": "float: right; color: " + propertyColor(characteristic.properties[i]) + "; font-weight: bold; margin-right:0.4em;",
+                                "class": "debug-message-element"
+                            }).text(characteristic.properties[i]).appendTo(row);
+                        }
+                    }
+                },
+                sortable: false,
+                removable: false,
+                addButton: false
+            });
+
+            var refreshDevicesList = () => {
+                $.get("/ble-central/devices", (devices) => {
+                    devicesList.empty();
+
+                    for(var i in devices){
+                        var d = devices[i];
+                        if(d.connectable){
+                            devicesList.append($("<option>").attr("value", d.id).attr("peripheral-name", d.name).attr("selected", (d.id === this["ble-peripheral-uuid"])).text(d.name + " (" + d.id + ")"));
+                        }
+                    }
+                    this["ble-peripheral-name"] = $('#node-input-ble-peripheral-uuid').find(":selected").attr("peripheral-name") || "";
+                });
+            };
+
+            var listCharacteristics = () => {
+                var uuid = devicesList.val();
+
+                characteristicsLoader.show();
+                characteristicsContainer.empty();
+                devicesList.prop("disabled", "disabled");
+                refreshPeripherals.prop("disabled", "disabled");
+
+                $.get("/ble-central/devices/" + uuid + "/characteristics", (characteristics) => {
+                    characteristicsLoader.hide();
+                    devicesList.prop("disabled", false);
+                    refreshPeripherals.prop("disabled", false);
+
+                    for(var i = 0 ; i < characteristics.length ; i++){
+                        characteristicsContainer.editableList("addItem", characteristics[i]);
+                    }
+                });
+            };
+
+            devicesList.on("change", () => {
+                this["ble-peripheral-name"] = $('#node-input-ble-peripheral-uuid').find(":selected").attr("peripheral-name");
+            });
+
+            refreshDevicesList();
+
+            refreshPeripherals.on("click", refreshDevicesList);
+
+            $("#node-input-list-characteristics").on("click", listCharacteristics);
+        }
+    });
+</script>
