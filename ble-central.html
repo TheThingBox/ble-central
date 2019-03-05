@@ -38,9 +38,7 @@
 
                     for(var i in devices){
                         var d = devices[i];
-                        if(d.connectable){
-                            devicesList.append($("<option>").attr("value", d.id).attr("peripheral-name", d.name).attr("selected", (d.id === this["ble-peripheral-uuid"])).text(d.name + " (" + d.id + ")"));
-                        }
+                        devicesList.append($("<option>").attr("value", d.id).attr("peripheral-name", d.name).attr("selected", (d.id === this["ble-peripheral-uuid"])).text(d.name + " (" + d.id + ")"));
                     }
                 });
             };
