@@ -1,6 +1,6 @@
 module.exports = function(RED) {
     "use strict";
-    var noble = require("noble");
+    var noble = require("@abandonware/noble");
 
     var BLECentral = {
         "devices": {},
