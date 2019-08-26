@@ -1,6 +1,6 @@
 {
   "name": "ble-central",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "thethingbox",
   "description": "",
   "keywords": [
@@ -8,7 +8,7 @@
     "ble-central"
   ],
   "dependencies": {
-    "noble": "1.9.1"
+    "@abandonware/noble": "1.9.2-3"
   },
   "node-red": {
     "nodes": {
